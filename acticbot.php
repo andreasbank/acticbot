@@ -13,6 +13,8 @@
 date_default_timezone_set('Europe/Stockholm');
 
 class ActicBot {
+  private $uname = '';
+  private $passwd = '';
   private $verbose = false;
   private $full_url = null;
   private $referer = null;
@@ -48,8 +50,9 @@ class ActicBot {
   private $refresh_interval = 5;
   private $ch = null;
 
-  function __construct() {
-    /* Nothing to do yet */
+  function __construct($uname, $passwd) {
+    $this->uname = $uname;
+    $this->passwd = $passwd;
   }
 
   private function generate_cookies_header($cookies_array) {
@@ -252,6 +255,9 @@ class ActicBot {
     }
 
     if (!$this->logged_in) {
+      if ($this->verbose) {
+        printf("Not logged in.");
+      }
       $this->login();
     }
 
@@ -266,7 +272,7 @@ class ActicBot {
     $this->prepare($full_url, $referer, $post_data, $headers, $cookies);
 
     if (!($result = curl_exec($this->ch))) {
-      throw new Exception("Error: %s", curl_error($this->ch));
+      throw new Exception("%s", curl_error($this->ch));
     }
     $this->fetch_time = time();
 
@@ -331,16 +337,23 @@ class ActicBot {
   private function login() {
     $this->logged_in = true;
     $this->clear_refresh();
+    if ($this->verbose) {
+      printf("Logging in...");
+    }
     $this->call('http://www.actic.se/mina-bokningar/',
         'http://www.actic.se/log-in/',
-        array('actic_username' => 'andreas.mikael.bank@gmail.com',
-        'actic_pincode' => '0403'), null, false, null);
+        array('actic_username' => $this->uname,
+        'actic_pincode' => $this->passwd), null, false, null);
     $this->clear_refresh();
     $this->call('http://www.actic.se/mina-bokningar/',
         'http://www.actic.se/log-in/', null, null, true, null);
-    if (strstr($this->response['body'], '<h3>Mina bokningar</h3>') == false) {
+    if (strstr($this->response['body'], '>Logga in</a>') !== false) {
       $this->logged_in = false;
       throw new Exception('Failed to login');
+    } else {
+      if ($this->verbose) {
+        printf("Login successfull.");
+      }
     }
   }
 
@@ -507,7 +520,7 @@ class ActicBot {
   }
 
 } /* class ActiveBot */
-$acticbot = new ActicBot();
+$acticbot = new ActicBot('andreas.mikael.bank@gmail.com', 'somepass');
 /*
 $bookings = $acticbot->get_bookings();
 var_dump($bookings);
